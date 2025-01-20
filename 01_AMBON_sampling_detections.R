@@ -46,11 +46,33 @@ detections_by_station <- detect_data_long %>%
   mutate(nDetect = sum(detect), nObs = n()) %>% 
   relocate(nDetect:nObs, .after = detect)
 
+replicate_detections <- detect_data_long %>% 
+  mutate(detect = case_when(nReads > 0 ~ 1,
+                            TRUE ~ 0)) %>% 
+  relocate(detect, .after = nReads) %>% 
+  group_by(location1, depth, collection_year, Species) %>% 
+  mutate(nDetect = sum(detect), nObs = n()) %>% 
+  relocate(nDetect:nObs, .after = detect) %>% 
+  slice_head()
+
+replicate_detections %>% group_by(location1, depth, collection_year) %>% 
+  filter(nObs == 3) %>% slice_head()
+
+biorep_detections <- detect_data_long %>% 
+  mutate(detect = case_when(nReads > 0 ~ 1,
+                            TRUE ~ 0)) %>% 
+  relocate(detect, .after = nReads) %>% 
+  group_by(location1, collection_year, Species) %>% 
+  mutate(nDetect = sum(detect), nObs = n()) %>% 
+  relocate(nDetect:nObs, .after = detect) %>% 
+  slice_head() %>% 
+  filter(nDetect > 0)
+
 ### Density ridgeplot ----------------------------------------------------------
 
 positive_detections <- detections_by_station %>% 
   filter(detect == 1) %>% 
-  filter(grepl("SKQ2021",ABL_ID))
+  filter(depth <= 50)
 
 rare_detections <- positive_detections %>% 
   group_by(Species) %>% 
@@ -79,6 +101,14 @@ detect_stations <- detect_data %>%
   drop_na(longitude) %>% 
   group_by(location1, collection_year) %>% 
   slice_head()
+
+number_of_stations <- detect_data %>% 
+  drop_na(longitude) %>% 
+  group_by(location1, depth, collection_year) %>% 
+  slice_head() %>% 
+  ungroup() %>% 
+  group_by(collection_year) %>% 
+  summarize(n())
 
 sampling_map <- basemap(limits=c(-175,-150,60,75), bathymetry = TRUE, rotate = TRUE) +
   ggspatial::geom_spatial_point(data = detect_stations, 
@@ -137,6 +167,7 @@ ggplot()+geom_polygon(data=ak,aes(long,lat,group=group),fill=8,color="black") +
   theme_minimal()
 
 
-save(detect_data_long, file = "AMBON_total_detections_MM.csv")
+save(detect_data_long, file = "data products/AMBON_total_detections_MM.csv")
 
-save(depth_detection, sampling_map, file = "AMBON_sampling_detections.Rdata")
+save(depth_detection, sampling_map, file = "data products/AMBON_sampling_detections.Rdata")
+
